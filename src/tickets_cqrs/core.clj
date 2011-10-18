@@ -19,13 +19,18 @@
        (redis/lrange (ticket-key ticket-id) 0 -1)))
 
 (defn -main [] 
-  (redis/with-server {:host "127.0.0.1"}
-    (let [ticket-id 123
-          r-key (ticket-key ticket-id)] 
-      (redis/del r-key)
-      (save-ticket-events ticket-id ticket-history)
-      (println (reductions conj {} 
-                 (get-ticket-history ticket-id))))))
+  (try
+    (redis/with-server {:host "127.0.0.1"}
+      (let [ticket-id 123
+            r-key (ticket-key ticket-id)] 
+        (redis/del r-key)
+        (save-ticket-events ticket-id ticket-history)
+        (println (reductions conj {} 
+                   (get-ticket-history ticket-id)))))
+    (catch java.net.ConnectException e
+      (binding [*out* *err*]
+        (println "ERROR: Please start redis server manually!"))
+      (System/exit 1))))
 
     ;(println (reductions conj {} 
     ;                     (redis/lrange "ticket:123" 0 4)))))
