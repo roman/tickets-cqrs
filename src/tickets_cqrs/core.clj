@@ -28,9 +28,11 @@
         (println (reductions conj {}
                    (get-ticket-history ticket-id)))))
     (catch java.net.ConnectException e
-      (binding [*out* *err*]
-        (println "ERROR: Please start redis server manually!"))
-      (System/exit 1))))
+      (defn abort [msg]
+        (binding [*out* *err*]
+          (println msg))
+        (System/exit 1))
+      (abort "ERROR: Please start redis server manually!"))))
 
     ;(println (reductions conj {}
     ;                     (redis/lrange "ticket:123" 0 4)))))
