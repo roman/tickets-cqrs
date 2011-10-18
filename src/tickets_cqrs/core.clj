@@ -1,37 +1,31 @@
-(ns tickets-cqrs.core)
+(ns tickets-cqrs.core
+    (:require [redis.core :as redis]))
 
-(def users
-  [{:oid 1 :first "Tatsuhiro" :last "Ujihisa"}
-   {:oid 2 :first "Roman" :last "Gonzalez"}
-   {:oid 3 :first "Tavis" :last "Rudd"}])
 
-(def statuses '(open closed))
-(def core-fields '(title body assignee))
+(def ticket-history 
+  '({:title "foo" :body "bar"}
+    {:title "lark"}
+    {:assignee 'roman :body "barbar"} 
+    {:priority 3}))
 
-(def ticket-commands
-  '(
-    create
-    set-title
-    set-status
-    set-assignee
-    set-references                      ; links to other things orders, tickets, etc.
 
-    composite))
+(defn ticket-key [id] (str "ticket:" id))
 
-(def empty-ticket {})
-;;; ticket state is a map
-(def scenario1
-  [{:command 'create :title "new ticket"}
-   {:command 'set-title :title "old ticket"}
-   {:command 'set-assignee :assignee 1}
-   ])
+(defn save-ticket-events [ticket-id events] 
+  (doall (map #(redis/rpush (ticket-key ticket-id) %) events)))
 
-(defn transform-command-to-state [comm]
-  (dissoc comm :command))
+(defn get-ticket-history [ticket-id] 
+  (map read-string 
+       (redis/lrange (ticket-key ticket-id) 0 -1)))
 
-(defn ticket-state-accumulator-v1 [prev-state input]
-  (conj prev-state (transform-command-to-state input)))
+(defn -main [] 
+  (redis/with-server {:host "127.0.0.1"}
+    (let [ticket-id 123
+          r-key (ticket-key ticket-id)] 
+      (redis/del r-key)
+      (save-ticket-events ticket-id ticket-history)
+      (println (reductions conj {} 
+                 (get-ticket-history ticket-id))))))
 
-(defn test-it []
-  (reductions ticket-state-accumulator-v1 empty-ticket scenario1)
-  )
+    ;(println (reductions conj {} 
+    ;                     (redis/lrange "ticket:123" 0 4)))))
